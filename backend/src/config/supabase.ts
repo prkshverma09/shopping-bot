@@ -15,4 +15,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     persistSession: false,
     autoRefreshToken: false,
   },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    fetch: (url, options) => {
+      // If standalone PostgREST is mounted at root, strip /rest/v1
+      const normalizedUrl = typeof url === 'string' ? url.replace('/rest/v1/', '/') : url;
+      return fetch(normalizedUrl, options);
+    },
+  },
 });
