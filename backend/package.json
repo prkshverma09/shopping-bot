@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc",
     "bot": "tsx src/agent/buyer_bot.ts",
+    "bot:watch": "tsx src/agent/buyer_bot.ts --watch",
     "simulate": "tsx scripts/simulate_suppliers.ts",
     "inspect": "tsx src/vision/inspect_photos.ts",
     "demo": "tsx scripts/run_demo.ts",

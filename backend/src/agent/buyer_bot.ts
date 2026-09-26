@@ -128,10 +128,47 @@ export async function runBuyerBotEvaluation(demandId: string) {
   console.log(`========================================\n`);
 }
 
+/**
+ * Realtime listener mode: Watches for new demands and incoming offers automatically.
+ * Ideal for running alongside Hacker 1's frontend.
+ */
+export async function startBuyerBotService() {
+  console.log('[Buyer Bot Service] Listening for new demands and offers in realtime via Supabase...');
+
+  // Subscribe to new demands
+  supabase
+    .channel('bot-demands-channel')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'demands' },
+      async (payload) => {
+        console.log(`\n[Realtime Event] New demand received: "${payload.new.raw_message}" (ID: ${payload.new.id})`);
+        // Wait briefly for supplier agents to inject initial offers, then evaluate
+        setTimeout(async () => {
+          await runBuyerBotEvaluation(payload.new.id);
+        }, 3000);
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'offers' },
+      async (payload) => {
+        console.log(`[Realtime Event] New offer posted: Offer ${payload.new.id}`);
+        // Trigger evaluation cycle on demand
+        if (payload.new.demand_id) {
+          await runBuyerBotEvaluation(payload.new.demand_id);
+        }
+      }
+    )
+    .subscribe();
+}
+
 // Direct runner if executed via CLI
 if (process.argv[1]?.endsWith('buyer_bot.ts') || process.argv[1]?.endsWith('buyer_bot.js')) {
   (async () => {
-    // Look up latest open or processing demand
+    const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
+
+    // Run evaluation on latest demand immediately
     const { data: latestDemand } = await supabase
       .from('demands')
       .select('id')
@@ -142,7 +179,11 @@ if (process.argv[1]?.endsWith('buyer_bot.ts') || process.argv[1]?.endsWith('buye
     if (latestDemand) {
       await runBuyerBotEvaluation(latestDemand.id);
     } else {
-      console.log('[Buyer Bot] No existing demand found. Please create a demand first.');
+      console.log('[Buyer Bot] No existing demand found.');
+    }
+
+    if (isWatchMode) {
+      await startBuyerBotService();
     }
   })();
 }
