@@ -8,6 +8,7 @@ import DecisionCard from './components/DecisionCard'
 import TrustLedger from './components/TrustLedger'
 import FinalReceipt from './components/FinalReceipt'
 import PresenterDrawer from './components/PresenterDrawer'
+import ShopkeeperPanel, { Item as ShopItem, RetailSale } from './components/ShopkeeperPanel'
 import { approveOffer, declineOffer } from './lib/presenterActions'
 
 export default function App() {
@@ -17,6 +18,8 @@ export default function App() {
   const [offers, setOffers] = useState<Offer[]>([])
   const [actions, setActions] = useState<Action[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [shopItems, setShopItems] = useState<ShopItem[]>([])
+  const [retailSales, setRetailSales] = useState<RetailSale[]>([])
   const [decisionBusy, setDecisionBusy] = useState(false)
 
   const offerIdsRef = useRef<Set<string>>(new Set())
@@ -37,6 +40,28 @@ export default function App() {
       .from('suppliers')
       .select('*')
       .then(({ data }) => setSuppliers((data as Supplier[]) ?? []))
+
+    // Fetch Shopkeeper items and retail sales
+    const loadShopkeeperData = () => {
+      supabase
+        .from('items')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) setShopItems(data as ShopItem[])
+        })
+      supabase
+        .from('retail_sales')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) setRetailSales(data as RetailSale[])
+        })
+    }
+
+    loadShopkeeperData()
+    const shopkeeperInterval = setInterval(loadShopkeeperData, 1500)
+    return () => clearInterval(shopkeeperInterval)
   }, [])
 
   // Realtime subscriptions, scoped once a demand exists.
@@ -201,6 +226,24 @@ export default function App() {
         )}
         <TrustLedger rows={rows} />
         <FinalReceipt rows={rows} />
+        
+        {/* Integrated Shopkeeper Retail Engine */}
+        <ShopkeeperPanel
+          items={shopItems}
+          sales={retailSales}
+          onRefresh={() => {
+            supabase
+              .from('items')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .then(({ data }) => data && setShopItems(data as ShopItem[]))
+            supabase
+              .from('retail_sales')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .then(({ data }) => data && setRetailSales(data as RetailSale[]))
+          }}
+        />
       </div>
 
       {activeAsk && (

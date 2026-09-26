@@ -67,14 +67,14 @@ export async function insertFixtureOffer(demandId: string, supplierId: string, k
 // it is recording the one the buyer just made.
 export async function approveOffer(offer: Offer) {
   const total = (offer.unit_price + offer.shipping) * offer.quantity
-  const { error: orderErr } = await supabase.from('orders').insert({
+  const { data: orderData, error: orderErr } = await supabase.from('orders').insert({
     offer_id: offer.id,
     quantity: offer.quantity,
     unit_price: offer.unit_price,
     shipping: offer.shipping,
     total,
     status: 'placed',
-  })
+  }).select().single()
   if (orderErr) throw orderErr
 
   const { error: offerErr } = await supabase
@@ -82,6 +82,37 @@ export async function approveOffer(offer: Offer) {
     .update({ status: 'accepted' })
     .eq('id', offer.id)
   if (offerErr) throw offerErr
+
+  // Auto-intake items for retail listing in Supabase
+  try {
+    const unitPrice = offer.unit_price
+    const shipping = offer.shipping
+    const quantity = offer.quantity
+    const costBasis = Number((unitPrice + shipping / quantity).toFixed(2))
+    const listPrice = Math.round(costBasis / (1 - 0.55))
+    const floorPrice = Number((costBasis / (1 - 0.30)).toFixed(2))
+
+    const demoSizes = ['W29 L30', 'W30 L32', 'W31 L32', 'W32 L32']
+    const itemsToInsert = demoSizes.map((size) => ({
+      order_id: (orderData as any)?.id,
+      title: `Vintage Levi's 501 Straight Leg Denim - ${size}`,
+      category: "Levi's 501",
+      size,
+      grade: offer.seen_grade || offer.claimed_grade || 'A',
+      flaws: ['Subtle vintage wash wear', 'Original chainstitched hems intact'],
+      cost_basis: costBasis,
+      list_price: listPrice,
+      floor_price: floorPrice,
+      current_price: listPrice,
+      photo_urls: offer.photo_urls,
+      status: 'listed',
+      days_on_shelf: 0,
+    }))
+
+    await supabase.from('items').insert(itemsToInsert)
+  } catch (err) {
+    // Non-blocking fallback
+  }
 }
 
 export async function declineOffer(offer: Offer) {

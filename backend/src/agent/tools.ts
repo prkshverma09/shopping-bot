@@ -275,5 +275,35 @@ export async function placeOrder(offerId: string) {
   await supabase.from('offers').update({ status: 'accepted' }).eq('id', offerId);
 
   console.log(`[Tool: placeOrder] Order successfully placed! Total: £${total} (Qty: ${quantity} pcs)`);
+
+  // Asynchronously trigger Shopkeeper intake to create retail listings and compute floor pricing
+  try {
+    const costBasis = Number((unitPrice + shipping / quantity).toFixed(2));
+    const listPrice = Math.round(costBasis / (1 - 0.55));
+    const floorPrice = Number((costBasis / (1 - 0.30)).toFixed(2));
+    const demoSizes = ['W29 L30', 'W30 L32', 'W31 L32', 'W32 L32'];
+
+    const itemsToInsert = demoSizes.map((size) => ({
+      order_id: data.id,
+      title: `Vintage Levi's 501 Straight Leg Denim - ${size}`,
+      category: "Levi's 501",
+      size,
+      grade: offer.seen_grade || offer.claimed_grade || 'A',
+      flaws: ['Subtle vintage wash wear', 'Original chainstitched hems intact'],
+      cost_basis: costBasis,
+      list_price: listPrice,
+      floor_price: floorPrice,
+      current_price: listPrice,
+      photo_urls: offer.photo_urls || ['https://images.unsplash.com/photo-1542272604-780c96856592'],
+      status: 'listed',
+      days_on_shelf: 0,
+    }));
+
+    await supabase.from('items').insert(itemsToInsert);
+    console.log(`[Shopkeeper Integration] Auto-cataloged ${itemsToInsert.length} retail listings for order ${data.id}.`);
+  } catch (err) {
+    console.warn('[Shopkeeper Integration] Intake error:', err);
+  }
+
   return data;
 }
