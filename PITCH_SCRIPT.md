@@ -64,10 +64,14 @@
 
 ## 💡 How to Answer Judge Questions (Q&A Cheat Sheet)
 
-### Q1: "Are these suppliers real external APIs or simulated?"
-> *"Counter defines an open agent-to-agent protocol for wholesale commerce. In this demo, we run autonomous buyer and supplier agents over a real PostgreSQL event stream and live OpenAI Vision models.*
+### Q1: "How do supplier APIs and the agent network work?"
+> *"We are building for the emerging **Agentic Commerce** standard — where each wholesale supplier has their own quoting agent (or API/webhook), and Counter acts as the autonomous buyer agent.*
 > 
-> *Because traditional vintage warehouses trade via WhatsApp/manual invoices rather than public REST APIs, Supplier D demonstrates how an external supplier agent plugs directly into Counter's protocol to respond in real time."*
+> *When a reseller clicks 'Send Demand', Counter broadcasts the request across this wholesale agent network:*
+> * **Supplier A**: Responds via API with a £12 quote, but Counter's buyer bot refuses them based on historic failure rate.
+> * **Supplier C**: Responds via API with a £16 quote + bale photo. Counter's vision bot catches defects and calls their API back with a £14 counteroffer, which they accept.
+> * **Supplier D (Live)**: A dynamic supplier agent actively listening to demand broadcasts and submitting quotes in real time.
+> * **Supplier B**: Responds via API with a £18 quote, clean but £2 over the price cap, triggering human-in-the-loop approval.*"
 
 ### Q2: "How does the Computer Vision photo grading work?"
 > *"Our vision engine analyzes supplier bale photos for structural defects — looking at crotches, hems, pocket stitching, and wash wear. If detected flaws conflict with the supplier's claimed grade, Counter automatically recalculates fair market value and sends a discounted counteroffer before the buyer commits any capital."*
