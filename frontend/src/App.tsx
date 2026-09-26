@@ -71,14 +71,40 @@ export default function App() {
       })
       .subscribe()
 
-    // Catch anything inserted in the gap between demand creation and subscribe.
-    supabase
-      .from('offers')
-      .select('*')
-      .eq('demand_id', demand.id)
-      .then(({ data }) => setOffers((data as Offer[]) ?? []))
+    // Initial fetch
+    const refreshData = () => {
+      supabase
+        .from('offers')
+        .select('*')
+        .eq('demand_id', demand.id)
+        .then(({ data: fetchedOffers }) => {
+          if (fetchedOffers && fetchedOffers.length > 0) {
+            setOffers(fetchedOffers as Offer[])
+            const ids = (fetchedOffers as Offer[]).map((o) => o.id)
+            supabase
+              .from('actions')
+              .select('*')
+              .in('offer_id', ids)
+              .then(({ data: fetchedActions }) => {
+                if (fetchedActions) setActions(fetchedActions as Action[])
+              })
+            supabase
+              .from('orders')
+              .select('*')
+              .in('offer_id', ids)
+              .then(({ data: fetchedOrders }) => {
+                if (fetchedOrders) setOrders(fetchedOrders as Order[])
+              })
+          }
+        })
+    }
+
+    refreshData()
+    // Poll every 1s for immediate responsiveness
+    const pollInterval = setInterval(refreshData, 1000)
 
     return () => {
+      clearInterval(pollInterval)
       supabase.removeChannel(channel)
     }
   }, [demand?.id])
@@ -107,10 +133,11 @@ export default function App() {
       max_waist: mandate?.max_waist ?? 32,
     }
     const parsed = parseDemand(raw, defaults)
+    const defaultShopId = mandate?.shop_id || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
     const { data, error } = await supabase
       .from('demands')
       .insert({
-        shop_id: mandate?.shop_id,
+        shop_id: defaultShopId,
         raw_message: raw,
         ...parsed,
         status: 'open',

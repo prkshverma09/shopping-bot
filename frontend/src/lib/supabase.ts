@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : (typeof process !== 'undefined' ? process.env : {})
+const globalProcess = typeof globalThis !== 'undefined' ? (globalThis as { process?: { env?: Record<string, string> } }).process : undefined
+const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (globalProcess?.env ?? {})
 const url = env.VITE_SUPABASE_URL as string | undefined
 const anonKey = env.VITE_SUPABASE_ANON_KEY as string | undefined
 

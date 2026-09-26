@@ -132,31 +132,72 @@ export async function runBuyerBotEvaluation(demandId: string) {
  * Realtime listener mode: Watches for new demands and incoming offers automatically.
  * Ideal for running alongside Hacker 1's frontend.
  */
-export async function startBuyerBotService() {
-  console.log('[Buyer Bot Service] Listening for new demands and offers in realtime via Supabase...');
+import { simulateSupplierStream } from '../../scripts/simulate_suppliers.js';
 
-  // Subscribe to new demands
+/**
+ * Realtime and active polling listener mode:
+ * Watches for new demands, automatically streams in supplier offers,
+ * and runs Buyer Bot evaluation.
+ */
+export async function startBuyerBotService() {
+  console.log('[Buyer Bot Service] Active and listening for new demands via Supabase & polling...');
+
+  let processedDemands = new Set<string>();
+
+  // Initialize with already processed demands so we only process new ones
+  const { data: existing } = await supabase.from('demands').select('id, status');
+  existing?.forEach((d) => {
+    if (d.status === 'completed' || d.status === 'processing') {
+      processedDemands.add(d.id);
+    }
+  });
+
+  const pollInterval = setInterval(async () => {
+    try {
+      const { data: openDemands } = await supabase
+        .from('demands')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      for (const demand of openDemands || []) {
+        if (!processedDemands.has(demand.id)) {
+          processedDemands.add(demand.id);
+          console.log(`\n======================================================`);
+          console.log(`[Buyer Bot Service] New demand detected! ID: ${demand.id}`);
+          console.log(`Prompt: "${demand.raw_message}"`);
+          console.log(`======================================================\n`);
+
+          // 1. Mark as processing
+          await supabase.from('demands').update({ status: 'processing' }).eq('id', demand.id);
+
+          // 2. Stream in supplier offers
+          console.log(`[Buyer Bot Service] Triggering supplier agents for Demand ${demand.id}...`);
+          await simulateSupplierStream(demand.id, 800);
+
+          // 3. Run Buyer Bot evaluation
+          console.log(`[Buyer Bot Service] Running bot evaluation on all incoming offers...`);
+          await runBuyerBotEvaluation(demand.id);
+        }
+      }
+    } catch (err) {
+      // quiet retry on intermittent network blip
+    }
+  }, 1500);
+
+  // Subscribe to realtime as well for instant notification
   supabase
     .channel('bot-demands-channel')
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'demands' },
       async (payload) => {
-        console.log(`\n[Realtime Event] New demand received: "${payload.new.raw_message}" (ID: ${payload.new.id})`);
-        // Wait briefly for supplier agents to inject initial offers, then evaluate
-        setTimeout(async () => {
-          await runBuyerBotEvaluation(payload.new.id);
-        }, 3000);
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'offers' },
-      async (payload) => {
-        console.log(`[Realtime Event] New offer posted: Offer ${payload.new.id}`);
-        // Trigger evaluation cycle on demand
-        if (payload.new.demand_id) {
-          await runBuyerBotEvaluation(payload.new.demand_id);
+        const demandId = payload.new.id;
+        if (!processedDemands.has(demandId)) {
+          processedDemands.add(demandId);
+          console.log(`\n[Realtime Event] New demand received: "${payload.new.raw_message}" (ID: ${demandId})`);
+          await simulateSupplierStream(demandId, 800);
+          await runBuyerBotEvaluation(demandId);
         }
       }
     )
