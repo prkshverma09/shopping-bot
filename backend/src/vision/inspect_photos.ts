@@ -31,8 +31,15 @@ export async function inspectPhotos(
   imageUrl: string,
   claimedGrade: string
 ): Promise<VisionInspectionResult> {
-  const apiKey = process.env.XAI_API_KEY || process.env.OPENAI_API_KEY;
-  const baseURL = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
+  const apiKey = process.env.OPENAI_API_KEY || process.env.XAI_API_KEY;
+  // If OpenAI key is used, default to standard OpenAI endpoint and gpt-4o-mini
+  const isOpenAI = Boolean(process.env.OPENAI_API_KEY && !process.env.XAI_API_KEY);
+  const baseURL = isOpenAI
+    ? process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+    : process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
+  const model = isOpenAI
+    ? process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    : process.env.GROK_MODEL || 'grok-beta';
 
   // If the image is the designated Supplier C demo bundle, use pinned defects
   if (imageUrl.includes('supplier_c') || imageUrl.includes('damaged')) {
@@ -45,7 +52,7 @@ export async function inspectPhotos(
   }
 
   // If no real API key is configured or default placeholder is present, clean bundles pass as claimed grade
-  if (!apiKey || apiKey === 'your-xai-api-key') {
+  if (!apiKey || apiKey === 'your-xai-api-key' || apiKey === 'your-openai-api-key') {
     return {
       seen_grade: claimedGrade,
       reason: `Visual condition verified as ${claimedGrade}. No defects found.`,
@@ -56,7 +63,7 @@ export async function inspectPhotos(
   try {
     const openai = new OpenAI({ apiKey, baseURL });
     const response = await openai.chat.completions.create({
-      model: process.env.GROK_MODEL || 'grok-beta',
+      model: model,
       messages: [
         {
           role: 'system',
