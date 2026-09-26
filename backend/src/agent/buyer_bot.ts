@@ -205,26 +205,34 @@ export async function startBuyerBotService() {
 }
 
 // Direct runner if executed via CLI
-if (process.argv[1]?.endsWith('buyer_bot.ts') || process.argv[1]?.endsWith('buyer_bot.js')) {
+const isDirectRun =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.includes('buyer_bot') ||
+  process.argv[2] === '--watch' ||
+  process.argv.includes('--watch');
+
+if (isDirectRun) {
   (async () => {
     const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
 
-    // Run evaluation on latest demand immediately
-    const { data: latestDemand } = await supabase
-      .from('demands')
-      .select('id')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (latestDemand) {
-      await runBuyerBotEvaluation(latestDemand.id);
-    } else {
-      console.log('[Buyer Bot] No existing demand found.');
-    }
-
     if (isWatchMode) {
       await startBuyerBotService();
+    } else {
+      // Run evaluation on latest demand immediately
+      const { data: latestDemand } = await supabase
+        .from('demands')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestDemand) {
+        await runBuyerBotEvaluation(latestDemand.id);
+      } else {
+        console.log('[Buyer Bot] No existing demand found. Run with --watch to listen for new demands.');
+      }
     }
-  })();
+  })().catch((err) => {
+    console.error('[Buyer Bot] Fatal error in main runner:', err);
+  });
 }

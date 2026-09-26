@@ -186,6 +186,12 @@ export default function App() {
       <DemandInput disabled={!!demand} onSubmit={handleSubmitDemand} />
 
       <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+        {demand && rows.length === 0 && (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-white/70 animate-pulse">
+            <p className="text-lg font-semibold text-white">Posting demand to wholesale supplier agents…</p>
+            <p className="mt-1 text-sm text-white/50">Collecting offers and running automated photo & condition checks.</p>
+          </div>
+        )}
         {rows.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2">
             {rows.map((ctx) => (
