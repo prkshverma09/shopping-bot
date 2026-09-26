@@ -1,0 +1,25 @@
+{
+  "name": "counter-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Counter Buyer Bot backend, agents, and simulation scripts",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "bot": "tsx src/agent/buyer_bot.ts",
+    "simulate": "tsx scripts/simulate_suppliers.ts",
+    "inspect": "tsx src/vision/inspect_photos.ts",
+    "demo": "tsx scripts/run_demo.ts",
+    "seed": "tsx scripts/seed_db.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "dotenv": "^16.4.7",
+    "openai": "^4.86.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
