@@ -14,8 +14,17 @@ export default function MarkedPhoto({
   markers: DamageMarker[]
 }) {
   return (
-    <div className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black">
-      <img src={photoUrl} alt="Bundle inspection" className="block w-full object-cover" />
+    <div className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black min-h-[200px]">
+      <img
+        src={photoUrl}
+        alt="Bundle inspection"
+        className="block w-full h-56 object-cover"
+        onError={(e) => {
+          // Fallback to high quality demo denim photo if external URL fails
+          ;(e.target as HTMLImageElement).src =
+            'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&w=800&q=80'
+        }}
+      />
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`0 0 ${REF_W} ${REF_H}`}

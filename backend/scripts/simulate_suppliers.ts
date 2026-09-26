@@ -41,7 +41,7 @@ export async function simulateSupplierStream(demandId: string, delayMs: number =
     ship_days: 7,
     quantity: 20,
     photo_urls: [
-      'https://images.unsplash.com/photo-supplier_c-damaged-jeans',
+      'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&w=800&q=80',
     ],
     status: 'open',
   });
