@@ -17,9 +17,7 @@ export interface ParsedDemand {
 export async function createDemand(rawMessage: string, shopId?: string) {
   const defaultShopId = shopId || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-  // Default heuristic parse for demo prompt:
-  // "I need about 40 Grade A Levi's 501s, waist 28-32, under £18 landed, the kind that sells in my shop. Budget £600."
-  const parsed: ParsedDemand = {
+  let parsed: ParsedDemand = {
     quantity: 40,
     category: "Levi's 501",
     grade: 'Grade A',
@@ -27,6 +25,48 @@ export async function createDemand(rawMessage: string, shopId?: string) {
     max_unit_price: 18.0,
     budget: 600.0,
   };
+
+  const apiKey = process.env.OPENAI_API_KEY || process.env.XAI_API_KEY;
+  if (apiKey && apiKey !== 'your-openai-api-key') {
+    try {
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({
+        apiKey,
+        baseURL: process.env.OPENAI_BASE_URL || (process.env.OPENAI_API_KEY ? 'https://api.openai.com/v1' : 'https://api.x.ai/v1'),
+      });
+      console.log('[OpenAI] Extracting demand parameters via real LLM call...');
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You extract vintage clothing wholesale buying demand parameters from a user prompt into strict JSON.
+Fields:
+- quantity (integer)
+- category (string)
+- grade (string, e.g. "Grade A")
+- sizes (string, e.g. "28-32")
+- max_unit_price (float)
+- budget (float)`
+          },
+          { role: 'user', content: rawMessage }
+        ],
+        response_format: { type: 'json_object' }
+      });
+      const llmParsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      parsed = {
+        quantity: Number(llmParsed.quantity) || parsed.quantity,
+        category: llmParsed.category || parsed.category,
+        grade: llmParsed.grade || parsed.grade,
+        sizes: llmParsed.sizes || parsed.sizes,
+        max_unit_price: Number(llmParsed.max_unit_price) || parsed.max_unit_price,
+        budget: Number(llmParsed.budget) || parsed.budget,
+      };
+      console.log('[OpenAI] Successfully parsed demand parameters:', parsed);
+    } catch (err) {
+      console.warn('[OpenAI] LLM demand extraction fallback:', err);
+    }
+  }
 
   const { data, error } = await supabase
     .from('demands')

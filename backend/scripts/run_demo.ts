@@ -46,19 +46,25 @@ async function main() {
   console.log(`📑 FINAL TRUST LEDGER & CLOSING RECEIPT (Demo 2:50)`);
   console.log(`======================================================\n`);
 
+  // Reset previous transactions for clean demo run if needed
+  // Fetch actions for this demand
   const { data: actions } = await supabase
     .from('actions')
-    .select('*, offers(claimed_grade, unit_price, suppliers(name))')
+    .select('*, offers!inner(demand_id, claimed_grade, unit_price, suppliers(name))')
+    .eq('offers.demand_id', demand.id)
     .order('created_at', { ascending: true });
 
-  console.log(`--- Ledger Actions Audit ---`);
+  console.log(`--- Ledger Actions Audit (Demand: ${demand.id}) ---`);
   actions?.forEach((act, idx) => {
     console.log(
       ` ${idx + 1}. [${act.action.toUpperCase()}] ${act.offers?.suppliers?.name || 'Supplier'} -> ${act.note}`
     );
   });
 
-  const { data: orders } = await supabase.from('orders').select('*');
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('*, offers!inner(demand_id)')
+    .eq('offers.demand_id', demand.id);
   const totalPieces = orders?.reduce((sum, o) => sum + o.quantity, 0) || 0;
   const totalSpend = orders?.reduce((sum, o) => sum + Number(o.total), 0) || 0;
 

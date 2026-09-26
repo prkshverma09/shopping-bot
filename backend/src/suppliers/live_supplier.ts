@@ -19,7 +19,7 @@ export async function createLiveSupplierDOffer(demandId: string) {
       ship_days: 5,
       quantity: 20,
       photo_urls: [
-        'https://images.unsplash.com/photo-1542272604-780c96856592?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80',
       ],
       status: 'open',
     })
